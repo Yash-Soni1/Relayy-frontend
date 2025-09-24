@@ -1,34 +1,43 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Login from "./pages/Login";
+import Home from "./pages/Home"; // keep this untouched
+import LoginCardSection from "@/components/ui/login-signup"; // your preserved component
+import { CreateJoinWorkspace } from "./pages/CreateJoinWorkspace";
+import { WorkspacePage } from "./pages/WorkspacePage";
 import { Dashboard } from "./pages/Dashboard";
-import  Home  from "./pages/Home";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Toaster } from "react-hot-toast";
 
 export const App = () => (
   <>
-    <Toaster
-      position="top-center"
-      toastOptions={{
-        style: {
-          color: "#000",
-          fontWeight: "500",
-          borderRadius: "0.5rem",
-          boxShadow: "0 4px 15px rgba(255, 255, 255, 0.2)",
-        },
-      }}
-    />
-
-
+    <Toaster position="top-center" />
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<LoginCardSection />} />
+
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/workspace/create-join"
+          element={
+            <ProtectedRoute>
+              <CreateJoinWorkspace />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/workspace/:id"
+          element={
+            <ProtectedRoute>
+              <WorkspacePage />
             </ProtectedRoute>
           }
         />
