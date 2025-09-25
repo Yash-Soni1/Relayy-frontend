@@ -37,28 +37,44 @@ export default function LoginCardSection() {
 
     setLoading(true);
     try {
+      let user;
+
       if (tab === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
-        // ✅ Skip create-join redirect once
-        sessionStorage.setItem("skipWorkspaceRedirect", "true");
-
-        toast.success("Logged in successfully!");
-        navigate("/dashboard");
+        user = data.user;
       } else {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) throw signUpError;
+        user = signUpData.user;
 
-        if (signUpData.user) {
+        if (user) {
           const { error: updateError } = await supabase.auth.updateUser({ data: { full_name: name } });
           if (updateError) throw updateError;
         }
-
-        sessionStorage.setItem("skipWorkspaceRedirect", "true");
-        toast.success("Signup successful! Check your email to confirm.");
-        navigate("/dashboard");
       }
+
+      if (!user) throw new Error("User not found");
+
+      // ✅ Fetch user's workspaces
+      const { data: wsData, error: wsError } = await supabase
+        .from("workspace_members")
+        .select("workspace_id")
+        .eq("user_id", user.id);
+
+      if (wsError) throw wsError;
+
+      if (!wsData || wsData.length === 0) {
+        // ✅ No workspaces: redirect to create/join
+        navigate("/workspace/create-join");
+      } else {
+        // ✅ Workspaces exist: redirect to recent or first workspace
+        const recentWorkspaceId = localStorage.getItem("recentWorkspace");
+        const targetWorkspace = recentWorkspaceId || wsData[0].workspace_id;
+        navigate(`/workspace/${targetWorkspace}`);
+      }
+
+      toast.success(tab === "login" ? "Logged in successfully!" : "Signup successful! Check your email to confirm.");
     } catch (err: any) {
       setFormError(capitalize(err.message));
     } finally {
@@ -66,19 +82,45 @@ export default function LoginCardSection() {
     }
   };
 
-  const handleOAuth = async (provider: "google") => {
-    setLoading(true);
-    try {
-      await supabase.auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: "http://localhost:5173/dashboard" }, // ✅ Fix: redirect to dashboard
-      });
-    } catch (err: any) {
-      toast.error(capitalize(err.message));
-    } finally {
-      setLoading(false);
+
+const handleOAuth = async (provider: "google") => {
+  setLoading(true);
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin }, // redirect back to app
+    });
+
+    if (error) throw error;
+
+    // After redirect back, check user session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData?.session?.user;
+    if (!user) throw new Error("User not found");
+
+    // Fetch user's workspaces
+    const { data: wsData, error: wsError } = await supabase
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", user.id);
+
+    if (wsError) throw wsError;
+
+    if (!wsData || wsData.length === 0) {
+      navigate("/workspace/create-join");
+    } else {
+      const recentWorkspaceId = localStorage.getItem("recentWorkspace");
+      const targetWorkspace = recentWorkspaceId || wsData[0].workspace_id;
+      navigate(`/workspace/${targetWorkspace}`);
     }
-  };
+
+    toast.success("Logged in successfully with Google!");
+  } catch (err: any) {
+    toast.error(capitalize(err.message));
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-bl from-black via-zinc-700 to-black text-zinc-50 p-4">
@@ -122,12 +164,26 @@ export default function LoginCardSection() {
 
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="text-zinc-50 placeholder:text-zinc-500 bg-zinc-800" />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="text-zinc-50 placeholder:text-zinc-500 bg-zinc-800"
+            />
           </div>
 
           <div className="relative">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="text-zinc-50 placeholder:text-zinc-500 bg-zinc-800 pr-10" />
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="text-zinc-50 placeholder:text-zinc-500 bg-zinc-800 pr-10"
+            />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-8 -translate-y-1/2 text-zinc-400 hover:text-zinc-200">
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>

@@ -2,8 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home"; // keep this untouched
 import LoginCardSection from "@/components/ui/login-signup"; // your preserved component
 import { CreateJoinWorkspace } from "./pages/CreateJoinWorkspace";
-import { WorkspacePage } from "./pages/WorkspacePage";
-import { Dashboard } from "./pages/Dashboard";
+import WorkspacePage from "./pages/WorkspacePage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Toaster } from "react-hot-toast";
 
@@ -14,16 +13,6 @@ export const App = () => (
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<LoginCardSection />} />
-
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-
         <Route
           path="/workspace/create-join"
           element={
@@ -32,7 +21,6 @@ export const App = () => (
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/workspace/:id"
           element={
